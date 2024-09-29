@@ -7,7 +7,9 @@ import com.storemate.POJO.User;
 import com.storemate.constants.StoreMateConstants;
 import com.storemate.dao.UserDao;
 import com.storemate.service.UserService;
+import com.storemate.utils.EmailUtils;
 import com.storemate.utils.StoreMateUtils;
+import com.storemate.wrapper.UserWrapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -16,8 +18,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
-import java.util.Map;
-import java.util.Objects;
+
+import java.util.*;
 
 
 @Slf4j
@@ -35,6 +37,12 @@ public class UserServiceImpl implements UserService {
 
     @Autowired
     JwtUtil jwtUtil;
+
+    @Autowired
+    JwtFilter jwtFilter;
+
+    @Autowired
+    EmailUtils emailUtils;
 
 
     @Override
@@ -108,6 +116,64 @@ public class UserServiceImpl implements UserService {
            e.printStackTrace();
        }
         return StoreMateUtils.getResponseEntity("Bad Credential", HttpStatus.BAD_REQUEST);
+    }
+
+    //============================================================================================================================
+
+    @Override
+    public ResponseEntity<List<UserWrapper>> getAllUsers() {
+        try {
+
+            if(jwtFilter.isAdmin()){
+               return new ResponseEntity<>(userDao.getAllUsers(), HttpStatus.OK);
+            }else{
+                return new ResponseEntity<>(new ArrayList<>(), HttpStatus.UNAUTHORIZED);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return new  ResponseEntity<List<UserWrapper>>(new ArrayList<UserWrapper>(), HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @Override
+    public ResponseEntity<String> update(Map<String, String> requestMap) {
+        try {
+
+            if(jwtFilter.isAdmin()){
+               Optional<User> optional = userDao.findById(Integer.parseInt(requestMap.get("id")));
+               if (!optional.isEmpty()){
+                        userDao.updateStatus(requestMap.get("status"), Integer.parseInt(requestMap.get("id")));
+                        sendEmailToAllAdmin(requestMap.get("status"), optional.get().getEmail(), userDao.getAllAdmins());
+                        return StoreMateUtils.getResponseEntity("Status Updated Successful", HttpStatus.OK);
+               }else{
+                   return StoreMateUtils.getResponseEntity("User Id Doesn't Exists", HttpStatus.OK);
+               }
+            }else {
+                return StoreMateUtils.getResponseEntity(StoreMateConstants.UNAUTHORIZED_ACCESS, HttpStatus.UNAUTHORIZED);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return StoreMateUtils.getResponseEntity(StoreMateConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    private void sendEmailToAllAdmin(String status, String user, List<String> allAdmins) {
+
+        allAdmins.remove(jwtFilter.getCurrUserName());
+
+        if(status != null && status.equalsIgnoreCase("true")){
+
+            emailUtils.sendSimpleMail(jwtFilter.getCurrUserName(), "Account Approved", "user:-"+ user +" \n Is Approved by \n ADMIN-:"+jwtFilter.getCurrUserName(), allAdmins);
+
+        }else{
+            emailUtils.sendSimpleMail(jwtFilter.getCurrUserName(), "Account Disabled", "user:-"+ user +" \n Is  Disabled by \n ADMIN-:"+jwtFilter.getCurrUserName(), allAdmins);
+
+        }
+
+
+
+
     }
 
 
