@@ -1,9 +1,11 @@
 package com.storemate.JWT;
 
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
+import io.jsonwebtoken.security.Keys;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import com.google.common.base.Function;
@@ -11,11 +13,15 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 
+import javax.crypto.SecretKey;
+
 
 @Service
 public class JwtUtil {
-    
-    private String secret = "kartik@2000";
+
+    // Generate a secure key for HS256
+    private SecretKey key = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+
 
 
     public String extractUserName(String token) {
@@ -34,7 +40,7 @@ public class JwtUtil {
     }
     
     public Claims extractAllClaims(String token) {
-        return Jwts.parser().setSigningKey(secret).parseClaimsJws(token).getBody();
+        return Jwts.parser().setSigningKey(key).parseClaimsJws(token).getBody();
     }
 
     private Boolean isTokenExpired(String token) {
@@ -48,25 +54,21 @@ public class JwtUtil {
         return createToken(claims,userName);
    }
 
-   public String generateToken(String userName,String role) {
-        Map<String,Object> claims = new HashMap<>();
-        claims.put("role", role);
-        return createToken(claims,userName);
-   }
 
-    private String createToken(Map<String, Object> claims, String subject) {
-
+    public String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
-        .setClaims(claims)
-        .setSubject(subject)
-        .setIssuedAt(new Date(System.currentTimeMillis()))
-        .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10))
-        .signWith(SignatureAlgorithm.HS256, secret).compact();
-        
+                .setClaims(claims)
+                .setSubject(subject)
+                .setIssuedAt(new Date(System.currentTimeMillis()))
+                .setExpiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 10)) // Token valid for 10 hours
+                .signWith(key)
+                .compact();
     }
+
 
     public Boolean validateToken(String token, UserDetails userDetails) {
         final String username = extractUserName(token);
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
+
 }
