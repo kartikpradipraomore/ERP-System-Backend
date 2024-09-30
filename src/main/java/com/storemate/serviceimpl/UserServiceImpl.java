@@ -10,6 +10,7 @@ import com.storemate.service.UserService;
 import com.storemate.utils.EmailUtils;
 import com.storemate.utils.StoreMateUtils;
 import com.storemate.wrapper.UserWrapper;
+import io.jsonwebtoken.lang.Strings;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -158,6 +159,7 @@ public class UserServiceImpl implements UserService {
         return StoreMateUtils.getResponseEntity(StoreMateConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+
     private void sendEmailToAllAdmin(String status, String user, List<String> allAdmins) {
 
         allAdmins.remove(jwtFilter.getCurrUserName());
@@ -171,10 +173,58 @@ public class UserServiceImpl implements UserService {
 
         }
 
-
-
-
     }
+
+    @Override
+    public ResponseEntity<String> checkToken() {
+        return StoreMateUtils.getResponseEntity("true", HttpStatus.OK);
+    }
+
+    @Override
+    public ResponseEntity<String> changePassword(Map<String, String> requestMap) {
+       try{
+            User user = userDao.findByEmail(jwtFilter.getCurrUserName());
+
+            if(!user.equals(null)){
+                if(user.getPassword().equals(requestMap.get("oldPassword"))){
+                    user.setPassword(requestMap.get("newPassword"));
+                    userDao.save(user);
+                    return StoreMateUtils.getResponseEntity("Password Updated Successfully", HttpStatus.OK);
+                }
+                return StoreMateUtils.getResponseEntity("INCORRECT OLD PASSWORD", HttpStatus.BAD_REQUEST);
+            }
+            return StoreMateUtils.getResponseEntity(StoreMateConstants.SOMETHING_WENT_WRONG, HttpStatus.BAD_REQUEST);
+
+       } catch (Exception e) {
+           e.printStackTrace();
+       }
+
+       return StoreMateUtils.getResponseEntity(StoreMateConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+
+    // ==================================================================================================================================================
+
+    @Override
+    public ResponseEntity<String> forgetPassword(Map<String, String> requestMap) {
+        try {
+            User user = userDao.findByEmail(requestMap.get("email"));
+            log.info("Fetched user: {}", user);
+
+            if (!Objects.isNull(user)) {
+                emailUtils.forgetMail(user.getEmail(), "Forgot Password Information By StoreMate", user.getPassword());
+
+            } else {
+                return StoreMateUtils.getResponseEntity("User with the provided email does not exist", HttpStatus.BAD_REQUEST);
+            }
+            return StoreMateUtils.getResponseEntity("Check Your Email For Credentials", HttpStatus.OK);
+        } catch (Exception e) {
+            log.error("Error occurred in forgetPassword: ", e);  // Better error logging
+            return StoreMateUtils.getResponseEntity(StoreMateConstants.SOMETHING_WENT_WRONG, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
 
 
 }

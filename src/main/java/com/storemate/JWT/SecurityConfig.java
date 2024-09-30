@@ -56,7 +56,7 @@ public class SecurityConfig extends SecurityConfigurerAdapter {
         httpSecurity.csrf(AbstractHttpConfigurer::disable);
 
         httpSecurity.authorizeHttpRequests(auth -> {
-            auth.requestMatchers("/user/signup", "/user/login", "/user/forgotPassword").permitAll();
+            auth.requestMatchers("/user/signup", "/user/login", "/user/forgetPassword").permitAll();
             auth.anyRequest().authenticated();
 
             httpSecurity.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
