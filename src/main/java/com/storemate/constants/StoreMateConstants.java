@@ -4,4 +4,5 @@ public class StoreMateConstants {
     public static final String SOMETHING_WENT_WRONG = "Something Went Wrong.";
     public static final String INVALID_DATA = "INVALID DATA.";
     public static final String UNAUTHORIZED_ACCESS = "YOU DON'T HAVE ACCESS FOR THIS SITE";
+    public static final String STORE_LOCATION = "C:\\Users\\lenovo\\Desktop\\Bill";
 }
